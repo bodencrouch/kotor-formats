@@ -1,0 +1,25 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/kotor-bytes",
+    "crates/kotor-text",
+    "crates/kotor-ncs-isa",
+    "crates/kotor-formats",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.77"
+license = "MIT"
+repository = "https://github.com/oldrepublicwizard/kotor-formats"
+
+[workspace.dependencies]
+kotor-bytes = { version = "0.1.0", path = "crates/kotor-bytes" }
+kotor-text = { version = "0.1.0", path = "crates/kotor-text" }
+kotor-ncs-isa = { version = "0.1.0", path = "crates/kotor-ncs-isa" }
+
+[profile.release]
+opt-level = 2
+lto = "thin"
+strip = true

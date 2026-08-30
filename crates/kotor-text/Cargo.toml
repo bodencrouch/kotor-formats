@@ -1,0 +1,11 @@
+[package]
+name = "kotor-text"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+description = "Text codecs for BioWare Aurora/Odyssey formats: lossless Latin-1 storage, CP1252 display."
+
+[dependencies]

@@ -1,0 +1,11 @@
+[package]
+name = "kotor-bytes"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+description = "Bounds-checked byte cursor for BioWare Aurora/Odyssey binary formats."
+
+[dependencies]
