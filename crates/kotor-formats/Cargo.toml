@@ -9,5 +9,3 @@ repository.workspace = true
 description = "Round-trip readers and writers for BioWare Aurora/Odyssey data formats."
 
 [dependencies]
-kotor-bytes = { workspace = true }
-kotor-text = { workspace = true }

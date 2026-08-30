@@ -9,10 +9,6 @@ version = "0.1.0"
 [[package]]
 name = "kotor-formats"
 version = "0.1.0"
-dependencies = [
- "kotor-bytes",
- "kotor-text",
-]
 
 [[package]]
 name = "kotor-ncs-isa"
