@@ -59,6 +59,37 @@ pub mod field_type {
     pub const ORIENTATION: u32 = 16;
     /// Three-component location.
     pub const POSITION: u32 = 17;
+    /// String-table reference.
+    ///
+    /// Not part of the BioWare type set the games themselves write — their
+    /// codes stop at [`POSITION`]. Some Aurora-family tools emit it, so it is
+    /// read only when [`GffParseOptions::accept_strref`] asks for it.
+    pub const STRREF: u32 = 18;
+}
+
+/// What a parser will accept beyond the strict format the games ship.
+///
+/// The default refuses everything: `V3.2` only, field types up to
+/// [`field_type::POSITION`]. That matches what the original Delphi patcher
+/// accepts, so a patcher built on this crate rejects the same files it always
+/// did. Readers that only display data can opt into more.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct GffParseOptions {
+    /// Accept a `V3.3` header. The layout is the same; only the version
+    /// string differs, and it is written back as it was read.
+    pub accept_v3_3: bool,
+    /// Accept [`field_type::STRREF`] fields.
+    pub accept_strref: bool,
+}
+
+impl GffParseOptions {
+    /// Accept everything this crate knows how to read.
+    pub fn lenient() -> Self {
+        Self {
+            accept_v3_3: true,
+            accept_strref: true,
+        }
+    }
 }
 
 /// One localized variant of an [`ExoLocString`].
@@ -210,6 +241,18 @@ pub enum FieldValue {
     Orientation([f32; 4]),
     /// Three-component location.
     Position([f32; 3]),
+    /// String-table reference stored in the field data block.
+    ///
+    /// Read only when [`GffParseOptions::accept_strref`] is set. The recorded
+    /// size is kept as loaded rather than assumed, so a file that carries one
+    /// still writes back byte for byte; no sample was available to confirm it
+    /// is always four.
+    StrRef {
+        /// Size recorded ahead of the value, in bytes.
+        byte_size: u32,
+        /// The string-table index.
+        value: i32,
+    },
 }
 
 impl FieldValue {
@@ -234,6 +277,7 @@ impl FieldValue {
             FieldValue::List(_) => field_type::LIST,
             FieldValue::Orientation(_) => field_type::ORIENTATION,
             FieldValue::Position(_) => field_type::POSITION,
+            FieldValue::StrRef { .. } => field_type::STRREF,
         }
     }
 
@@ -250,6 +294,7 @@ impl FieldValue {
                 | field_type::VOID
                 | field_type::ORIENTATION
                 | field_type::POSITION
+                | field_type::STRREF
         )
     }
 
@@ -266,6 +311,7 @@ impl FieldValue {
             FieldValue::Void(d) => 4 + d.len() as u32,
             FieldValue::Orientation(_) => 16,
             FieldValue::Position(_) => 12,
+            FieldValue::StrRef { byte_size, .. } => 4 + byte_size,
             FieldValue::Struct(_) | FieldValue::List(_) => 0,
         }
     }
@@ -855,8 +901,16 @@ impl GffFile {
 
     // -- reading -----------------------------------------------------------
 
-    /// Parse file bytes.
+    /// Parse file bytes, accepting only what the games themselves write.
+    ///
+    /// `V3.2` headers and field types up to [`field_type::POSITION`]. Use
+    /// [`GffFile::parse_with`] to accept more.
     pub fn parse(bytes: &[u8], path: &str) -> Result<Self> {
+        Self::parse_with(bytes, path, GffParseOptions::default())
+    }
+
+    /// Parse file bytes, choosing what to accept beyond the strict format.
+    pub fn parse_with(bytes: &[u8], path: &str, options: GffParseOptions) -> Result<Self> {
         if bytes.len() < HEADER_SIZE as usize {
             return Err(PatchError::gff(
                 1,
@@ -869,7 +923,9 @@ impl GffFile {
         let mut file_version = [0u8; 4];
         file_version.copy_from_slice(&bytes[4..8]);
 
-        if &file_version != b"V3.2" {
+        let version_ok =
+            &file_version == b"V3.2" || (options.accept_v3_3 && &file_version == b"V3.3");
+        if !version_ok {
             return Err(PatchError::gff(
                 1,
                 "Invalid file version. Loaded file is not in GFF V3.2 format!",
@@ -891,7 +947,7 @@ impl GffFile {
             list_index_count: read_u32(bytes, 52)?,
         };
 
-        let root = read_struct(bytes, &header, header.struct_offset, 0)?;
+        let root = read_struct(bytes, &header, header.struct_offset, 0, &options)?;
 
         Ok(Self {
             file_type,
@@ -1160,7 +1216,12 @@ fn apply_text_value(target: &mut FieldValue, value: &str, selector: &str) -> Res
                 *slot = bytes;
             }
         }
-        FieldValue::Dword64(_) | FieldValue::Struct(_) | FieldValue::List(_) => {}
+        // No textual assignment. StrRef joins these because the strict parser
+        // refuses to load one at all, so no instruction file can reach it.
+        FieldValue::Dword64(_)
+        | FieldValue::Struct(_)
+        | FieldValue::List(_)
+        | FieldValue::StrRef { .. } => {}
     }
 
     Ok(())
@@ -1351,7 +1412,13 @@ fn read_slice(bytes: &[u8], at: u32, len: u32) -> Result<&[u8]> {
 }
 
 /// Read a structure and everything beneath it.
-fn read_struct(bytes: &[u8], header: &Header, at: u32, depth: u32) -> Result<GffStruct> {
+fn read_struct(
+    bytes: &[u8],
+    header: &Header,
+    at: u32,
+    depth: u32,
+    options: &GffParseOptions,
+) -> Result<GffStruct> {
     // Structures nest, and a corrupt file could point a structure at itself.
     if depth > 256 {
         return Err(PatchError::gff(
@@ -1371,7 +1438,7 @@ fn read_struct(bytes: &[u8], header: &Header, at: u32, depth: u32) -> Result<Gff
 
     if field_count == 1 {
         let field_at = header.field_offset + data_or_offset * FIELD_ENTRY_SIZE;
-        result.add_field(read_field(bytes, header, field_at, depth)?);
+        result.add_field(read_field(bytes, header, field_at, depth, options)?);
     } else if field_count > 1 {
         for i in 0..field_count {
             let index_at = header.field_index_offset + data_or_offset + i * 4;
@@ -1381,7 +1448,7 @@ fn read_struct(bytes: &[u8], header: &Header, at: u32, depth: u32) -> Result<Gff
             // entries in some DLG structs) collapse the way HoloPatcher/PyKotor
             // does — otherwise a load/save cycle keeps the bloat and the file
             // no longer matches a Holo rewrite of the same tree.
-            result.add_field(read_field(bytes, header, field_at, depth)?);
+            result.add_field(read_field(bytes, header, field_at, depth, options)?);
         }
     }
 
@@ -1389,7 +1456,13 @@ fn read_struct(bytes: &[u8], header: &Header, at: u32, depth: u32) -> Result<Gff
 }
 
 /// Read one field entry.
-fn read_field(bytes: &[u8], header: &Header, at: u32, depth: u32) -> Result<GffField> {
+fn read_field(
+    bytes: &[u8],
+    header: &Header,
+    at: u32,
+    depth: u32,
+    options: &GffParseOptions,
+) -> Result<GffField> {
     let type_code = read_u32(bytes, at)?;
     let label_index = read_u32(bytes, at + 4)?;
     let data_or_offset = read_u32(bytes, at + 8)?;
@@ -1404,7 +1477,7 @@ fn read_field(bytes: &[u8], header: &Header, at: u32, depth: u32) -> Result<GffF
         field_type::FLOAT => FieldValue::Float(f32::from_bits(data_or_offset)),
         field_type::STRUCT => {
             let struct_at = header.struct_offset + data_or_offset * STRUCT_ENTRY_SIZE;
-            FieldValue::Struct(read_struct(bytes, header, struct_at, depth + 1)?)
+            FieldValue::Struct(read_struct(bytes, header, struct_at, depth + 1, options)?)
         }
         field_type::LIST => {
             let list_at = header.list_index_offset + data_or_offset;
@@ -1414,11 +1487,11 @@ fn read_field(bytes: &[u8], header: &Header, at: u32, depth: u32) -> Result<GffF
                 let index_at = list_at + 4 + i * 4;
                 let struct_index = read_u32(bytes, index_at)?;
                 let struct_at = header.struct_offset + struct_index * STRUCT_ENTRY_SIZE;
-                items.push(read_struct(bytes, header, struct_at, depth + 1)?);
+                items.push(read_struct(bytes, header, struct_at, depth + 1, options)?);
             }
             FieldValue::List(items)
         }
-        _ => read_complex(bytes, header, type_code, data_or_offset)?,
+        _ => read_complex(bytes, header, type_code, data_or_offset, options)?,
     };
 
     let label_at = header.label_offset + label_index * LABEL_ENTRY_SIZE;
@@ -1431,7 +1504,13 @@ fn read_field(bytes: &[u8], header: &Header, at: u32, depth: u32) -> Result<GffF
 }
 
 /// Read a value stored in the field data block.
-fn read_complex(bytes: &[u8], header: &Header, type_code: u32, offset: u32) -> Result<FieldValue> {
+fn read_complex(
+    bytes: &[u8],
+    header: &Header,
+    type_code: u32,
+    offset: u32,
+    options: &GffParseOptions,
+) -> Result<FieldValue> {
     let at = header.field_data_offset + offset;
 
     match type_code {
@@ -1509,6 +1588,11 @@ fn read_complex(bytes: &[u8], header: &Header, type_code: u32, offset: u32) -> R
                 *slot = f32::from_bits(read_u32(bytes, at + (i as u32) * 4)?);
             }
             Ok(FieldValue::Position(values))
+        }
+        field_type::STRREF if options.accept_strref => {
+            let byte_size = read_u32(bytes, at)?;
+            let value = read_u32(bytes, at + 4)? as i32;
+            Ok(FieldValue::StrRef { byte_size, value })
         }
         other => Err(PatchError::gff(
             5,
@@ -1735,6 +1819,10 @@ impl Writer<'_> {
                     cursor += 4;
                 }
             }
+            FieldValue::StrRef { byte_size, value } => {
+                put_u32(self.out, cursor, *byte_size);
+                put_u32(self.out, cursor + 4, *value as u32);
+            }
             _ => {
                 return Err(PatchError::gff(
                     5,
@@ -1837,6 +1925,90 @@ mod tests {
             reloaded.root.field("Plot").unwrap().value,
             FieldValue::Short(-1)
         );
+    }
+
+    /// A file carrying one StrRef field, which only a lenient parser accepts.
+    fn strref_sample() -> GffFile {
+        let mut file = GffFile::new_file("UTI ", "item.uti");
+        file.root
+            .add_field(GffField::new("Cost", FieldValue::Dword(7)));
+        file.root.add_field(GffField::new(
+            "Ref",
+            FieldValue::StrRef {
+                byte_size: 4,
+                value: 4242,
+            },
+        ));
+        file
+    }
+
+    #[test]
+    fn strref_fields_round_trip_byte_for_byte() {
+        let lenient = GffParseOptions::lenient();
+        let first = strref_sample().to_bytes().unwrap();
+
+        let reloaded = GffFile::parse_with(&first, "item.uti", lenient).unwrap();
+        assert_eq!(
+            reloaded.root.field("Ref").unwrap().value,
+            FieldValue::StrRef {
+                byte_size: 4,
+                value: 4242,
+            }
+        );
+        assert_eq!(first, reloaded.to_bytes().unwrap());
+    }
+
+    #[test]
+    fn a_strref_size_that_is_not_four_still_round_trips() {
+        // No sample file was available to confirm the recorded size is always
+        // four, so whatever a file carries has to survive a rewrite.
+        let mut file = GffFile::new_file("UTI ", "item.uti");
+        file.root.add_field(GffField::new(
+            "Ref",
+            FieldValue::StrRef {
+                byte_size: 9,
+                value: -1,
+            },
+        ));
+
+        let lenient = GffParseOptions::lenient();
+        let first = file.to_bytes().unwrap();
+        let reloaded = GffFile::parse_with(&first, "item.uti", lenient).unwrap();
+
+        assert_eq!(
+            reloaded.root.field("Ref").unwrap().value,
+            FieldValue::StrRef {
+                byte_size: 9,
+                value: -1,
+            }
+        );
+        assert_eq!(first, reloaded.to_bytes().unwrap());
+    }
+
+    #[test]
+    fn the_strict_parser_refuses_strref_fields() {
+        let bytes = strref_sample().to_bytes().unwrap();
+        let err = GffFile::parse(&bytes, "item.uti").unwrap_err();
+        assert_eq!(err.code(), 5);
+    }
+
+    #[test]
+    fn v3_3_is_read_only_when_asked_and_keeps_its_version() {
+        let mut bytes = sample().to_bytes().unwrap();
+        bytes[4..8].copy_from_slice(b"V3.3");
+
+        let err = GffFile::parse(&bytes, "item.uti").unwrap_err();
+        assert_eq!(err.code(), 1);
+        assert!(err.message().contains("V3.2"));
+
+        let opts = GffParseOptions {
+            accept_v3_3: true,
+            ..GffParseOptions::default()
+        };
+        let reloaded = GffFile::parse_with(&bytes, "item.uti", opts).unwrap();
+        assert_eq!(&reloaded.file_version, b"V3.3");
+        // The version is written back as it was read, not normalised to V3.2.
+        assert_eq!(&reloaded.to_bytes().unwrap()[4..8], b"V3.3");
     }
 
     #[test]
