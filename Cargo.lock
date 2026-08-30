@@ -3,17 +3,9 @@
 version = 3
 
 [[package]]
-name = "kotor-bytes"
-version = "0.1.0"
-
-[[package]]
 name = "kotor-formats"
 version = "0.1.0"
 
 [[package]]
 name = "kotor-ncs-isa"
-version = "0.1.0"
-
-[[package]]
-name = "kotor-text"
 version = "0.1.0"

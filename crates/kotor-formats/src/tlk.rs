@@ -7,8 +7,8 @@
 //! Entries are addressed by position, so appending is safe but removing an
 //! entry from the middle renumbers everything after it.
 
-use crate::latin1;
 use crate::error::{PatchError, Result};
+use crate::latin1;
 
 const SIGNATURE: &[u8; 4] = b"TLK ";
 const VERSION: &[u8; 4] = b"V3.0";

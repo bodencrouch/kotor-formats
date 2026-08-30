@@ -1,0 +1,54 @@
+# kotor-formats
+
+Shared readers and writers for the file formats *Star Wars: Knights of the Old
+Republic* I and II keep their data in.
+
+Three separate tools were each carrying their own copy of this code: a mod
+installer, a compiled-script compiler, and a query tool. The same byte layouts,
+written three times, free to drift apart. These crates are the one copy they
+all read from.
+
+## Crates
+
+| Crate | What it holds | Dependencies |
+| --- | --- | --- |
+| [`kotor-ncs-isa`](crates/kotor-ncs-isa) | The NCS bytecode instruction set, as data | none |
+| [`kotor-formats`](crates/kotor-formats) | GFF, 2DA, TLK, SSF, ERF/RIM readers and writers | none |
+
+They are split so a consumer takes only what it needs. A script compiler needs
+the instruction set and nothing else — no GFF parser, no 2DA parser. A patcher
+needs the formats and not the bytecode. Neither has to depend on the other.
+
+## Design
+
+**Round trips are exact.** Loading a file and saving it back without edits
+produces the same bytes. Field type tags, field-data widths, raw label bytes,
+and the padding a file happened to carry are all preserved rather than
+normalized away. A tool that rewrites a file it did not mean to change is a
+tool that corrupts saves.
+
+**Text is stored losslessly.** Bytes decode through a total, reversible
+Latin-1 mapping, so `encode(decode(x)) == x` holds for all 256 values. Real
+CP1252 cannot promise that — five of its byte values are undefined, and any
+character outside its repertoire has nowhere to go. Presentation is a separate
+concern: a display layer can remap the 0x80–0x9F range for output, as long as
+that mapping never reaches a write path.
+
+**Strictness is the default, leniency is opt-in.** `GffFile::parse` accepts
+what the original Delphi TSLPatcher accepted, so a patcher built on this crate
+rejects the same files it always did. `parse_with` and `GffParseOptions` let a
+read-only tool accept more — V3.3 headers, `StrRef` fields — without changing
+what anyone else sees.
+
+**Errors carry a subsystem and a code**, rendering as `(GFF-1)` or `(2DA-8)`.
+That is the form mod authors have been reading in install logs for twenty
+years, and it is preserved deliberately.
+
+## Status
+
+Early. The API is not stable yet, and `kotor-formats` is not published to
+crates.io — depend on it by git tag or path.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

@@ -8,8 +8,8 @@
 //! Cells holding the default marker `****` are written as an empty string, and
 //! empty strings read back as `****`, so a load/save cycle is stable.
 
-use crate::latin1;
 use crate::error::{PatchError, Result};
+use crate::latin1;
 
 const SIGNATURE: &[u8; 8] = b"2DA V2.b";
 const OLD_SIGNATURE: &[u8; 8] = b"2DA V2.0";
@@ -630,10 +630,7 @@ mod tests {
     #[test]
     fn global_dedup_reuses_string_further_right_on_earlier_row() {
         // Rectangle-only search would miss "x" on row0/col1 when writing row1/col0.
-        let table = build(
-            &["a", "b"],
-            &[("0", vec!["y", "x"]), ("1", vec!["x", "z"])],
-        );
+        let table = build(&["a", "b"], &[("0", vec!["y", "x"]), ("1", vec!["x", "z"])]);
         let bytes = table.to_bytes().unwrap();
         let occurrences = bytes.windows(2).filter(|w| *w == b"x\0").count();
         assert_eq!(occurrences, 1);

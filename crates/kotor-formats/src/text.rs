@@ -101,9 +101,7 @@ pub fn safe_str_to_float(s: &str) -> Result<f32, String> {
 /// (`k_pdan_state1+`, `k_pkor_!knexcav`). Everything else is dropped.
 pub fn string_to_resref(text: &str) -> String {
     text.chars()
-        .filter(|c| {
-            c.is_ascii_alphanumeric() || matches!(*c, '_' | '-' | '+' | '!')
-        })
+        .filter(|c| c.is_ascii_alphanumeric() || matches!(*c, '_' | '-' | '+' | '!'))
         .take(16)
         .collect()
 }

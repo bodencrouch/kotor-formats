@@ -10,8 +10,8 @@
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::{fsutil, latin1, text};
 use crate::error::{PatchError, Result};
+use crate::{fsutil, latin1, text};
 
 const ERF_HEADER_SIZE: u32 = 160;
 const ERF_KEY_ENTRY_SIZE: u32 = 24;
@@ -1146,8 +1146,11 @@ mod tests {
 
         let bytes = archive.to_bytes().unwrap();
         let reloaded = ErfFile::parse(&bytes, "test.mod").unwrap();
+        // The space goes, the bang stays. Delphi's StringToResRef drops `!`,
+        // but real script resrefs carry it (`k_pkor_!knexcav`) and stripping
+        // it would leave the resource unfindable. See `text::string_to_resref`.
         assert!(reloaded
-            .resource_data("myfile", extension_to_res_type("ncs"))
+            .resource_data("myfile!", extension_to_res_type("ncs"))
             .is_ok());
 
         let _ = fs::remove_dir_all(&dir);

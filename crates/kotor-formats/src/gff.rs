@@ -8,9 +8,9 @@
 //! Writing rebuilds every array from the in-memory tree, so a file that is
 //! loaded and saved without edits comes back byte for byte the same.
 
-use crate::{latin1, text};
 use crate::error::{PatchError, Result};
 use crate::strtok;
+use crate::{latin1, text};
 
 /// Size of the file header in bytes.
 const HEADER_SIZE: u32 = 56;
@@ -1234,7 +1234,7 @@ fn apply_text_value(target: &mut FieldValue, value: &str, selector: &str) -> Res
 /// INI — which never emits this type — is unaffected.
 pub fn parse_void_bytes(raw: &str) -> Option<Vec<u8>> {
     let stripped = raw.trim();
-    if stripped.replace('1', "").replace('0', "").is_empty() {
+    if stripped.replace(['1', '0'], "").is_empty() {
         let mut out = Vec::new();
         let mut i = 0;
         while i < stripped.len() {
@@ -2365,8 +2365,10 @@ mod tests {
 
     #[test]
     fn k1cp_dialog_load_save_matches_pykotor_size() {
-        let src = "/home/brunner56/modsync-hot/k1_scratch_006/ex_h/s006a/tslpatchdata/k_hcan_dialog.dlg";
-        let holo = "/home/brunner56/modsync-hot/k1_scratch_006/holo_game/Override/k_hcan_dialog.dlg";
+        let src =
+            "/home/brunner56/modsync-hot/k1_scratch_006/ex_h/s006a/tslpatchdata/k_hcan_dialog.dlg";
+        let holo =
+            "/home/brunner56/modsync-hot/k1_scratch_006/holo_game/Override/k_hcan_dialog.dlg";
         if !std::path::Path::new(src).is_file() {
             return;
         }
