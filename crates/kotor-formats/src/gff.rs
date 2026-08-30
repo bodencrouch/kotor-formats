@@ -1171,7 +1171,7 @@ fn apply_text_value(target: &mut FieldValue, value: &str, selector: &str) -> Res
 /// Bits (only `0`/`1`, in 8-bit chunks), `0x` hex (odd nibble padded), or
 /// standard base64. Matches HoloPatcher's `reader.py` encodings so a Delphi
 /// INI — which never emits this type — is unaffected.
-pub(crate) fn parse_void_bytes(raw: &str) -> Option<Vec<u8>> {
+pub fn parse_void_bytes(raw: &str) -> Option<Vec<u8>> {
     let stripped = raw.trim();
     if stripped.replace('1', "").replace('0', "").is_empty() {
         let mut out = Vec::new();
