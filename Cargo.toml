@@ -14,8 +14,8 @@ license = "MIT"
 repository = "https://github.com/arrenkaetris/kotor-formats"
 
 [workspace.dependencies]
-kotor-ncs-isa = { version = "0.1.0", path = "crates/kotor-ncs-isa" }
-kotor-formats = { version = "0.1.0", path = "crates/kotor-formats" }
+kotor-ncs-isa = { path = "crates/kotor-ncs-isa" }
+kotor-formats = { path = "crates/kotor-formats" }
 
 [profile.release]
 opt-level = 2
