@@ -5,9 +5,17 @@
       "release-type": "rust",
       "package-name": "kotor-formats",
       "include-component-in-tag": false
+    },
+    "crates/kotor-diff": {
+      "release-type": "rust",
+      "package-name": "kotor-diff",
+      "component": "kotor-diff"
+    },
+    "crates/kotor-ncs-isa": {
+      "release-type": "rust",
+      "package-name": "kotor-ncs-isa",
+      "component": "kotor-ncs-isa"
     }
   },
-  "plugins": [
-    "cargo-workspace"
-  ]
+  "plugins": ["cargo-workspace"]
 }
