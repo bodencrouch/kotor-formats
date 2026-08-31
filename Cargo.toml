@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/kotor-ncs-isa",
     "crates/kotor-formats",
+    "crates/kotor-diff",
 ]
 
 [workspace.package]
@@ -14,6 +15,7 @@ repository = "https://github.com/arrenkaetris/kotor-formats"
 
 [workspace.dependencies]
 kotor-ncs-isa = { version = "0.1.0", path = "crates/kotor-ncs-isa" }
+kotor-formats = { version = "0.1.0", path = "crates/kotor-formats" }
 
 [profile.release]
 opt-level = 2

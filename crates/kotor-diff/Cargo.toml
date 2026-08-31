@@ -1,0 +1,21 @@
+[package]
+name = "kotor-diff"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+description = "Compares BioWare Aurora/Odyssey data files and reports what changed."
+
+[features]
+default = []
+# Structural diff, patch and three-way merge over JSON values. Separate because
+# the format-level comparison needs no dependencies at all, and a consumer that
+# only wants that should not pull in serde.
+json = ["dep:serde", "dep:serde_json"]
+
+[dependencies]
+kotor-formats = { workspace = true }
+serde = { version = "1", features = ["derive"], optional = true }
+serde_json = { version = "1", features = ["preserve_order"], optional = true }

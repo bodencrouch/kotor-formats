@@ -14,10 +14,18 @@ all read from.
 | --- | --- | --- |
 | [`kotor-ncs-isa`](crates/kotor-ncs-isa) | The NCS bytecode instruction set, as data | none |
 | [`kotor-formats`](crates/kotor-formats) | GFF, 2DA, TLK, SSF, ERF/RIM readers and writers | none |
+| [`kotor-diff`](crates/kotor-diff) | Compares two files and says what changed | `kotor-formats` |
 
 They are split so a consumer takes only what it needs. A script compiler needs
 the instruction set and nothing else — no GFF parser, no 2DA parser. A patcher
 needs the formats and not the bytecode. Neither has to depend on the other.
+
+`kotor-diff` answers one question from two ends. A query tool compares resources
+structurally and can patch and merge them; an instruction-file editor needs the
+same comparison to work out what a mod did, so it can write the instructions
+that reproduce it. Two tools had each grown their own copy. Its JSON layer sits
+behind a feature, so a consumer that only wants the file comparison does not
+pull in serde.
 
 ## Design
 
