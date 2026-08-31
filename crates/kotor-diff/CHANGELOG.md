@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/arrenkaetris/kotor-formats/compare/kotor-diff-v0.2.1...kotor-diff-v0.2.2) (2026-08-31)
+
+
+### Miscellaneous Chores
+
+* **kotor-diff:** Synchronize kotor-formats versions
+
 ## [0.2.1](https://github.com/arrenkaetris/kotor-formats/compare/kotor-diff-v0.2.0...kotor-diff-v0.2.1) (2026-08-31)
 
 ## [0.2.0](https://github.com/arrenkaetris/kotor-formats/compare/kotor-diff-v0.1.0...kotor-diff-v0.2.0) (2026-08-31)
