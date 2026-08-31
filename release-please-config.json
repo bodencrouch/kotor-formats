@@ -1,10 +1,10 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
   "packages": {
-    ".": {
+    "crates/kotor-formats": {
       "release-type": "rust",
       "package-name": "kotor-formats",
-      "changelog-path": "CHANGELOG.md",
+      "changelog-path": "../../CHANGELOG.md",
       "include-component-in-tag": false
     }
   },
