@@ -32,17 +32,18 @@ pull in serde.
 Cargo resolves a git source once, so every dependency taken from one repository
 has to name the same ref. A consumer cannot pin each crate separately.
 
-So the crates release together, at one shared version, and `vX.Y.Z` is the tag
-to use. It is a point in the whole repository, and every crate in it carries
-that same version.
+So pin one tag and take every crate from it. A tag is a point in the whole
+repository, so whichever you name carries all three crates as they stood at that
+release. `vX.Y.Z` is the one to prefer; the per-crate tags name the same commits
+and exist so each changelog has somewhere to point.
 
 ```toml
 kotor-formats = { git = "https://github.com/arrenkaetris/kotor-formats", tag = "vX.Y.Z" }
 kotor-diff = { git = "https://github.com/arrenkaetris/kotor-formats", tag = "vX.Y.Z" }
 ```
 
-`kotor-diff-vX.Y.Z` and `kotor-ncs-isa-vX.Y.Z` name the same commits and exist
-so each crate's changelog has somewhere to point. Prefer the bare `vX.Y.Z`.
+The crates keep their own version numbers, which do not have to match — what
+matters is the ref, and a release publishes every crate at the same one.
 
 Nothing here is on crates.io, so the crates do not name each other by version —
 only by path. A version requirement would be one more thing to keep in step with
