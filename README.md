@@ -27,6 +27,21 @@ that reproduce it. Two tools had each grown their own copy. Its JSON layer sits
 behind a feature, so a consumer that only wants the file comparison does not
 pull in serde.
 
+## Taking more than one crate
+
+Each crate releases on its own, so the tags are `vX.Y.Z` for `kotor-formats`,
+`kotor-diff-vX.Y.Z`, and `kotor-ncs-isa-vX.Y.Z`.
+
+Cargo resolves a git source once, so a consumer taking several of these has to
+name the **same tag for all of them** — it cannot pin each crate to its own. Use
+the newest of the tags you need; a tag is a point in the whole repository, so it
+carries every crate at whatever version it had then.
+
+```toml
+kotor-formats = { git = "https://github.com/arrenkaetris/kotor-formats", tag = "kotor-diff-v0.2.0" }
+kotor-diff = { git = "https://github.com/arrenkaetris/kotor-formats", tag = "kotor-diff-v0.2.0" }
+```
+
 ## Design
 
 **Round trips are exact.** Loading a file and saving it back without edits
