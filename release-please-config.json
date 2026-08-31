@@ -17,5 +17,11 @@
       "component": "kotor-ncs-isa"
     }
   },
-  "plugins": ["cargo-workspace"]
+  "plugins": [
+    {
+      "type": "linked-versions",
+      "groupName": "kotor-formats",
+      "components": ["kotor-formats", "kotor-diff", "kotor-ncs-isa"]
+    }
+  ]
 }
